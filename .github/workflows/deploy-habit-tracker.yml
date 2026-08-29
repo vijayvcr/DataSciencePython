@@ -1,0 +1,46 @@
+name: Deploy Habit Tracker to GitHub Pages
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'habit-tracker/**'
+      - '.github/workflows/deploy-habit-tracker.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: deploy-habit-tracker
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: habit-tracker/package-lock.json
+
+      - name: Install and build
+        working-directory: habit-tracker
+        env:
+          GITHUB_PAGES: 'true'
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        run: |
+          npm ci
+          npm run build
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./habit-tracker/dist
+          destination_dir: habit-tracker
+          commit_message: 'Deploy habit tracker'
